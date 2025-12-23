@@ -1,6 +1,23 @@
 package ny
 
+import "ldtk"
 import rl "vendor:raylib"
+
+TILE_SIZE :: 8
+
+Level :: struct {
+	width:           int,
+	height:          int,
+	tiles:           []Tile,
+	collision_tiles: []u8,
+}
+
+Tile :: struct {
+	src:    rl.Rectangle,
+	dest:   rl.Rectangle,
+	flip_x: bool,
+	flip_y: bool,
+}
 
 main :: proc() {
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Game")
@@ -10,10 +27,25 @@ main :: proc() {
 	game := init_game()
 	canvas := init_canvas(320, 180)
 
-	for !rl.WindowShouldClose() {
-		update_game(&game)
+	current_level := load_level("ldtk/levels.ldtk", 0)
+	defer delete(current_level.tiles)
+	defer delete(current_level.collision_tiles)
 
+	tileset := rl.LoadTexture("res/tileset.png")
+	defer rl.UnloadTexture(tileset)
+
+	for !rl.WindowShouldClose() {
+		update_game(&game, current_level)
+
+		rl.BeginTextureMode(canvas.render_texture)
+		rl.ClearBackground(rl.RAYWHITE)
+		rl.BeginMode2D(game.cam)
+
+		draw_level(current_level, tileset)
 		draw_game(game, canvas)
+
+		rl.EndMode2D()
+		rl.EndTextureMode()
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.RED)
@@ -21,5 +53,68 @@ main :: proc() {
 		draw_canvas(canvas)
 
 		rl.EndDrawing()
+	}
+}
+
+load_level :: proc(filename: string, index: int) -> Level {
+	project, ok := ldtk.load_from_file(filename).?
+	if !ok {return {}}
+
+	if index < 0 || index >= len(project.levels) {return {}}
+
+	raw_level := project.levels[index]
+	level: Level
+
+	for layer in raw_level.layer_instances {
+		switch layer.type {
+		case .IntGrid:
+			level.width = layer.c_width
+			level.height = layer.c_height
+
+			level.collision_tiles = make([]u8, level.width * level.height)
+			level.tiles = make([]Tile, len(layer.auto_layer_tiles))
+
+			for val, idx in layer.int_grid_csv {
+				level.collision_tiles[idx] = u8(val)
+			}
+
+			for val, idx in layer.auto_layer_tiles {
+				level.tiles[idx].src = rl.Rectangle {
+					f32(val.src[0]),
+					f32(val.src[1]),
+					TILE_SIZE,
+					TILE_SIZE,
+				}
+
+				level.tiles[idx].dest = rl.Rectangle {
+					f32(val.px[0]),
+					f32(val.px[1]),
+					TILE_SIZE,
+					TILE_SIZE,
+				}
+
+				level.tiles[idx].flip_x = (val.f & 1) != 0
+				level.tiles[idx].flip_y = (val.f & 2) != 0
+			}
+
+			return level
+
+		case .Entities:
+		case .Tiles:
+		case .AutoLayer:
+		}
+	}
+
+	return {}
+}
+
+draw_level :: proc(level: Level, tileset: rl.Texture2D) {
+	for tile in level.tiles {
+		src := tile.src
+
+		if tile.flip_x {src.width *= -1}
+		if tile.flip_y {src.height *= -1}
+
+		rl.DrawTexturePro(tileset, src, tile.dest, {0, 0}, 0, rl.WHITE)
 	}
 }
