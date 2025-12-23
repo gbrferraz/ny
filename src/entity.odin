@@ -13,13 +13,6 @@ Entity :: struct {
 	is_grounded: bool,
 }
 
-Solid :: struct {
-	pos:         Vec2i,
-	size:        Vec2i,
-	x_remainder: f32,
-	y_remainder: f32,
-}
-
 move_entity_x :: proc(entity: ^Entity, solids: [dynamic]Solid, amount: f32) {
 	entity.x_remainder += amount
 	move := int(math.round(entity.x_remainder))
