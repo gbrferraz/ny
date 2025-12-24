@@ -20,6 +20,18 @@ move_player :: proc(player: ^Entity, level: Level, game: Game, dt: f32) {
 	}
 
 	move_entity_y(player, level, player.vel.y * dt)
+
+	if check_hazard(player^, level) {
+		player_death(player)
+	}
+
+	clamped_player_pos := rl.Vector2Clamp(
+		to_vec2(game.player.pos),
+		{0, 0},
+		{f32(level.width * TILE_SIZE), f32(level.height * TILE_SIZE)},
+	)
+
+	player.pos = to_vec2i(clamped_player_pos)
 }
 
 draw_player :: proc(player: Entity) {

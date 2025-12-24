@@ -1,5 +1,6 @@
 package ny
 
+import "core:fmt"
 import "ldtk"
 import rl "vendor:raylib"
 
@@ -117,4 +118,22 @@ draw_level :: proc(level: Level, tileset: rl.Texture2D) {
 
 		rl.DrawTexturePro(tileset, src, tile.dest, {0, 0}, 0, rl.WHITE)
 	}
+}
+
+update_camera :: proc(level: Level, game: ^Game) {
+	game.cam.target = to_vec2(game.player.pos)
+
+	level_w_px := f32(level.width * TILE_SIZE)
+	level_h_px := f32(level.height * TILE_SIZE)
+
+	min_x := game.cam.offset.x
+	min_y := game.cam.offset.y
+
+	max_x := level_w_px - f32(CANVAS_WIDTH) + game.cam.offset.x
+	max_y := level_h_px - f32(CANVAS_HEIGHT) + game.cam.offset.y
+
+	max_x = max(max_x, min_x)
+	max_y = max(max_y, min_y)
+
+	game.cam.target = rl.Vector2Clamp(game.cam.target, {min_x, min_y}, {max_x, max_y})
 }

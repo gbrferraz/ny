@@ -1,8 +1,6 @@
 package ny
 
-import "core:fmt"
 import "core:math"
-import rl "vendor:raylib"
 
 Entity :: struct {
 	pos:         Vec2i,
@@ -14,9 +12,10 @@ Entity :: struct {
 	is_grounded: bool,
 }
 
-EntityType :: enum {
-	Player,
-	Hazard,
+CollisionType :: enum {
+	None   = 0,
+	Solid  = 1,
+	Hazard = 2,
 }
 
 move_entity_x :: proc(entity: ^Entity, level: Level, amount: f32) {
@@ -28,7 +27,8 @@ move_entity_x :: proc(entity: ^Entity, level: Level, amount: f32) {
 		sign := int(math.sign(f32(move)))
 
 		for move != 0 {
-			if !collide_at(entity^, level, entity.pos + {sign, 0}) {
+			collision := collide_at(entity^, level, entity.pos + {sign, 0})
+			if !collision {
 				entity.pos.x += sign
 				move -= sign
 			} else {
@@ -48,7 +48,8 @@ move_entity_y :: proc(entity: ^Entity, level: Level, amount: f32) {
 		sign := int(math.sign(f32(move)))
 
 		for move != 0 {
-			if !collide_at(entity^, level, entity.pos + {0, sign}) {
+			collision := collide_at(entity^, level, entity.pos + {0, sign})
+			if !collision {
 				entity.pos.y += sign
 				move -= sign
 			} else {
@@ -60,8 +61,6 @@ move_entity_y :: proc(entity: ^Entity, level: Level, amount: f32) {
 }
 
 collide_at :: proc(entity: Entity, level: Level, pos: Vec2i) -> bool {
-	entity_rec := rl.Rectangle{f32(pos.x), f32(pos.y), f32(entity.size.x), f32(entity.size.y)}
-
 	local_x := f32(pos.x)
 	local_y := f32(pos.y)
 
@@ -76,14 +75,8 @@ collide_at :: proc(entity: Entity, level: Level, pos: Vec2i) -> bool {
 		for x in start_x ..= end_x {
 			if x >= 0 && x < level.width && y >= 0 && y < level.height {
 				idx := y * level.width + x
-
-				// Assuming 1 is the solid id
-				if level.collision_tiles[idx] == 1 {
-					return true
-				} else if level.collision_tiles[idx] == 2 {
-					fmt.println("Died")
-					return true
-				}
+				tile := CollisionType(level.collision_tiles[idx])
+				if tile == .Solid {return true}
 			}
 		}
 	}
@@ -93,4 +86,28 @@ collide_at :: proc(entity: Entity, level: Level, pos: Vec2i) -> bool {
 
 is_grounded :: proc(entity: Entity, level: Level) -> bool {
 	return collide_at(entity, level, entity.pos + {0, 1})
+}
+
+check_hazard :: proc(entity: Entity, level: Level) -> bool {
+	local_x := f32(entity.pos.x)
+	local_y := f32(entity.pos.y)
+
+	start_x := int(math.floor(local_x / f32(TILE_SIZE)))
+	start_y := int(math.floor(local_y / f32(TILE_SIZE)))
+
+	// Subtract 1 from the size to prevent edge bleed
+	end_x := int(math.floor((local_x + f32(entity.size.x) - 1) / f32(TILE_SIZE)))
+	end_y := int(math.floor((local_y + f32(entity.size.y) - 1) / f32(TILE_SIZE)))
+
+	for y in start_y ..= end_y {
+		for x in start_x ..= end_x {
+			if x >= 0 && x < level.width && y >= 0 && y < level.height {
+				idx := y * level.width + x
+				tile := CollisionType(level.collision_tiles[idx])
+				if tile == .Hazard {return true}
+			}
+		}
+	}
+
+	return false
 }

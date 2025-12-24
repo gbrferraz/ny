@@ -29,10 +29,8 @@ init_game :: proc() -> Game {
 
 update_game :: proc(game: ^Game, level: Level) {
 	dt := rl.GetFrameTime()
-
 	move_player(&game.player, level, game^, dt)
-
-	game.cam.target = to_vec2(game.player.pos)
+	update_camera(level, game)
 }
 
 draw_game :: proc(game: Game, canvas: Canvas) {
