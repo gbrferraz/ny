@@ -3,6 +3,7 @@ package ny
 import "core:math"
 
 Entity :: struct {
+	state:       EntityState,
 	pos:         Vec2i,
 	x_remainder: f32,
 	y_remainder: f32,
@@ -12,10 +13,31 @@ Entity :: struct {
 	is_grounded: bool,
 }
 
+EntityState :: enum {
+	Idle,
+	Running,
+	Jumping,
+	Dying,
+}
+
 CollisionType :: enum {
 	None   = 0,
 	Solid  = 1,
 	Hazard = 2,
+}
+
+update_entity_state :: proc(entity: ^Entity, level: Level) {
+	if entity.state == .Dying {return}
+
+	entity.is_grounded = is_grounded(entity^, level)
+
+	if !entity.is_grounded {
+		entity.state = .Jumping
+	} else if math.abs(entity.vel.x) > 10.0 {
+		entity.state = .Running
+	} else {
+		entity.state = .Idle
+	}
 }
 
 move_entity_x :: proc(entity: ^Entity, level: Level, amount: f32) {
