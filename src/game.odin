@@ -4,7 +4,6 @@ import rl "vendor:raylib"
 
 Vec2i :: [2]int
 Vec2 :: [2]f32
-GRAVITY :: 200
 
 SCREEN_WIDTH :: 1280
 SCREEN_HEIGHT :: 720
@@ -16,7 +15,6 @@ CANVAS_RATIO: f32 : SCREEN_WIDTH / CANVAS_WIDTH
 
 Game :: struct {
 	player: Entity,
-	solids: [dynamic]Solid,
 	canvas: rl.RenderTexture,
 	cam:    rl.Camera2D,
 }
@@ -32,16 +30,11 @@ init_game :: proc() -> Game {
 update_game :: proc(game: ^Game, level: Level) {
 	dt := rl.GetFrameTime()
 
-	// Apply player gravity
-	move_entity_y(&game.player, level, game.solids, GRAVITY * dt)
 	move_player(&game.player, level, game^, dt)
 
 	game.cam.target = to_vec2(game.player.pos)
 }
 
 draw_game :: proc(game: Game, canvas: Canvas) {
-
 	draw_player(game.player)
-	draw_solids(game)
-
 }

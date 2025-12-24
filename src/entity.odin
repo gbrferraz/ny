@@ -1,5 +1,6 @@
 package ny
 
+import "core:fmt"
 import "core:math"
 import rl "vendor:raylib"
 
@@ -8,12 +9,17 @@ Entity :: struct {
 	x_remainder: f32,
 	y_remainder: f32,
 	size:        Vec2i,
-	vel:         Vec2i,
+	vel:         Vec2,
 	speed:       f32,
 	is_grounded: bool,
 }
 
-move_entity_x :: proc(entity: ^Entity, level: Level, solids: [dynamic]Solid, amount: f32) {
+EntityType :: enum {
+	Player,
+	Hazard,
+}
+
+move_entity_x :: proc(entity: ^Entity, level: Level, amount: f32) {
 	entity.x_remainder += amount
 	move := int(math.round(entity.x_remainder))
 
@@ -22,7 +28,7 @@ move_entity_x :: proc(entity: ^Entity, level: Level, solids: [dynamic]Solid, amo
 		sign := int(math.sign(f32(move)))
 
 		for move != 0 {
-			if !collide_at(entity^, level, solids, entity.pos + {sign, 0}) {
+			if !collide_at(entity^, level, entity.pos + {sign, 0}) {
 				entity.pos.x += sign
 				move -= sign
 			} else {
@@ -33,7 +39,7 @@ move_entity_x :: proc(entity: ^Entity, level: Level, solids: [dynamic]Solid, amo
 	}
 }
 
-move_entity_y :: proc(entity: ^Entity, level: Level, solids: [dynamic]Solid, amount: f32) {
+move_entity_y :: proc(entity: ^Entity, level: Level, amount: f32) {
 	entity.y_remainder += amount
 	move := int(math.round(entity.y_remainder))
 
@@ -42,7 +48,7 @@ move_entity_y :: proc(entity: ^Entity, level: Level, solids: [dynamic]Solid, amo
 		sign := int(math.sign(f32(move)))
 
 		for move != 0 {
-			if !collide_at(entity^, level, solids, entity.pos + {0, sign}) {
+			if !collide_at(entity^, level, entity.pos + {0, sign}) {
 				entity.pos.y += sign
 				move -= sign
 			} else {
@@ -53,34 +59,11 @@ move_entity_y :: proc(entity: ^Entity, level: Level, solids: [dynamic]Solid, amo
 	}
 }
 
-collide_at :: proc(
-	entity: Entity,
-	level: Level,
-	solids: [dynamic]Solid,
-	check_pos: Vec2i,
-) -> bool {
-	entity_rec := rl.Rectangle {
-		f32(check_pos.x),
-		f32(check_pos.y),
-		f32(entity.size.x),
-		f32(entity.size.y),
-	}
+collide_at :: proc(entity: Entity, level: Level, pos: Vec2i) -> bool {
+	entity_rec := rl.Rectangle{f32(pos.x), f32(pos.y), f32(entity.size.x), f32(entity.size.y)}
 
-	for solid in solids {
-		solid_rec := rl.Rectangle {
-			f32(solid.pos.x),
-			f32(solid.pos.y),
-			f32(solid.size.x),
-			f32(solid.size.y),
-		}
-
-		if rl.CheckCollisionRecs(entity_rec, solid_rec) {
-			return true
-		}
-	}
-
-	local_x := f32(check_pos.x)
-	local_y := f32(check_pos.y)
+	local_x := f32(pos.x)
+	local_y := f32(pos.y)
 
 	start_x := int(math.floor(local_x / f32(TILE_SIZE)))
 	start_y := int(math.floor(local_y / f32(TILE_SIZE)))
@@ -97,6 +80,9 @@ collide_at :: proc(
 				// Assuming 1 is the solid id
 				if level.collision_tiles[idx] == 1 {
 					return true
+				} else if level.collision_tiles[idx] == 2 {
+					fmt.println("Died")
+					return true
 				}
 			}
 		}
@@ -105,6 +91,6 @@ collide_at :: proc(
 	return false
 }
 
-is_grounded :: proc(entity: Entity, level: Level, solids: [dynamic]Solid) -> bool {
-	return collide_at(entity, level, solids, entity.pos + {0, 1})
+is_grounded :: proc(entity: Entity, level: Level) -> bool {
+	return collide_at(entity, level, entity.pos + {0, 1})
 }
