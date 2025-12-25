@@ -27,21 +27,17 @@ main :: proc() {
 	game := init_game()
 	canvas := init_canvas(320, 180)
 
-	current_level := load_level("ldtk/levels.ldtk", 0)
-	defer delete(current_level.tiles)
-	defer delete(current_level.collision_tiles)
-
 	tileset := rl.LoadTexture("res/tileset.png")
 	defer rl.UnloadTexture(tileset)
 
 	for !rl.WindowShouldClose() {
-		update_game(&game, current_level)
+		update_game(&game)
 
 		rl.BeginTextureMode(canvas.render_texture)
 		rl.ClearBackground(rl.RAYWHITE)
 		rl.BeginMode2D(game.cam)
 
-		draw_level(current_level, tileset)
+		draw_level(game.level, tileset)
 		draw_game(game, canvas)
 
 		rl.EndMode2D()
@@ -119,11 +115,11 @@ draw_level :: proc(level: Level, tileset: rl.Texture2D) {
 	}
 }
 
-update_camera :: proc(level: Level, game: ^Game) {
+update_camera :: proc(game: ^Game) {
 	game.cam.target = to_vec2(game.player.pos)
 
-	level_w_px := f32(level.width * TILE_SIZE)
-	level_h_px := f32(level.height * TILE_SIZE)
+	level_w_px := f32(game.level.width * TILE_SIZE)
+	level_h_px := f32(game.level.height * TILE_SIZE)
 
 	min_x := game.cam.offset.x
 	min_y := game.cam.offset.y

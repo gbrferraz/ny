@@ -1,8 +1,10 @@
 package ny
 
 import "core:math"
+import rl "vendor:raylib"
 
 Entity :: struct {
+	type:        EntityType,
 	state:       EntityState,
 	pos:         Vec2i,
 	x_remainder: f32,
@@ -11,6 +13,12 @@ Entity :: struct {
 	vel:         Vec2,
 	speed:       f32,
 	is_grounded: bool,
+}
+
+EntityType :: enum {
+	None,
+	Player,
+	Goal,
 }
 
 EntityState :: enum {
@@ -132,4 +140,27 @@ check_hazard :: proc(entity: Entity, level: Level) -> bool {
 	}
 
 	return false
+}
+
+check_entity_collisions :: proc(entity: Entity, game: Game) -> EntityType {
+	entity_rec := rl.Rectangle {
+		f32(entity.pos.x),
+		f32(entity.pos.y),
+		f32(entity.size.x),
+		f32(entity.size.y),
+	}
+
+	for collision in game.entities {
+		collision_rec := rl.Rectangle {
+			f32(collision.pos.x),
+			f32(collision.pos.y),
+			f32(collision.size.x),
+			f32(collision.size.y),
+		}
+		if rl.CheckCollisionRecs(entity_rec, collision_rec) {
+			return collision.type
+		}
+	}
+
+	return .None
 }
