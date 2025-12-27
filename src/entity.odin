@@ -18,6 +18,7 @@ Entity :: struct {
 EntityType :: enum {
 	None,
 	Player,
+	Arrow,
 	Goal,
 }
 
@@ -57,7 +58,7 @@ move_entity_x :: proc(entity: ^Entity, level: Level, amount: f32) {
 		sign := int(math.sign(f32(move)))
 
 		for move != 0 {
-			collision := collide_at(entity^, level, entity.pos + {sign, 0})
+			collision := collide_at(entity^, entity.pos + {sign, 0}, level)
 			if !collision {
 				entity.pos.x += sign
 				move -= sign
@@ -78,7 +79,7 @@ move_entity_y :: proc(entity: ^Entity, level: Level, amount: f32) {
 		sign := int(math.sign(f32(move)))
 
 		for move != 0 {
-			collision := collide_at(entity^, level, entity.pos + {0, sign})
+			collision := collide_at(entity^, entity.pos + {0, sign}, level)
 			if !collision {
 				entity.pos.y += sign
 				move -= sign
@@ -90,7 +91,7 @@ move_entity_y :: proc(entity: ^Entity, level: Level, amount: f32) {
 	}
 }
 
-collide_at :: proc(entity: Entity, level: Level, pos: Vec2i) -> bool {
+collide_at :: proc(entity: Entity, pos: Vec2i, level: Level) -> bool {
 	local_x := f32(pos.x)
 	local_y := f32(pos.y)
 
@@ -105,17 +106,20 @@ collide_at :: proc(entity: Entity, level: Level, pos: Vec2i) -> bool {
 		for x in start_x ..= end_x {
 			if x >= 0 && x < level.width && y >= 0 && y < level.height {
 				idx := y * level.width + x
-				tile := CollisionType(level.collision_tiles[idx])
+				tile := CollisionType(level.col_tiles[idx])
 				if tile == .Solid {return true}
 			}
 		}
 	}
 
+	ent_collision := check_entity_collisions(entity, pos, level)
+	if ent_collision == .Arrow {return true}
+
 	return false
 }
 
 is_grounded :: proc(entity: Entity, level: Level) -> bool {
-	return collide_at(entity, level, entity.pos + {0, 1})
+	return collide_at(entity, entity.pos + {0, 1}, level)
 }
 
 check_hazard :: proc(entity: Entity, level: Level) -> bool {
@@ -133,7 +137,7 @@ check_hazard :: proc(entity: Entity, level: Level) -> bool {
 		for x in start_x ..= end_x {
 			if x >= 0 && x < level.width && y >= 0 && y < level.height {
 				idx := y * level.width + x
-				tile := CollisionType(level.collision_tiles[idx])
+				tile := CollisionType(level.col_tiles[idx])
 				if tile == .Hazard {return true}
 			}
 		}
@@ -142,23 +146,29 @@ check_hazard :: proc(entity: Entity, level: Level) -> bool {
 	return false
 }
 
-check_entity_collisions :: proc(entity: Entity, game: Game) -> EntityType {
-	entity_rec := rl.Rectangle {
-		f32(entity.pos.x),
-		f32(entity.pos.y),
-		f32(entity.size.x),
-		f32(entity.size.y),
-	}
+check_entity_collisions :: proc(entity: Entity, pos: Vec2i, level: Level) -> EntityType {
+	entity_rec := rl.Rectangle{f32(pos.x), f32(pos.y), f32(entity.size.x), f32(entity.size.y)}
 
-	for collision in game.entities {
+	for &other in level.entities {
+		if entity == other {continue}
+
 		collision_rec := rl.Rectangle {
-			f32(collision.pos.x),
-			f32(collision.pos.y),
-			f32(collision.size.x),
-			f32(collision.size.y),
+			f32(other.pos.x),
+			f32(other.pos.y),
+			f32(other.size.x),
+			f32(other.size.y),
 		}
 		if rl.CheckCollisionRecs(entity_rec, collision_rec) {
-			return collision.type
+			if other.type == .Arrow {
+				if entity.vel.y < 0 {continue}
+
+				entity_bottom := entity.pos.y + entity.size.y
+				arrow_top := other.pos.y
+
+				if entity_bottom > arrow_top {continue}
+			}
+
+			return other.type
 		}
 	}
 

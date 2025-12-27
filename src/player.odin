@@ -1,6 +1,5 @@
 package ny
 
-import "core:fmt"
 import rl "vendor:raylib"
 
 GRAVITY :: 1500.0
@@ -24,32 +23,39 @@ move_player :: proc(player: ^Entity, game: ^Game, dt: f32) {
 
 	player.vel.y += GRAVITY * dt
 
-	if rl.IsKeyPressed(.X) && is_grounded(game.player, game.level) {
+	if rl.IsKeyPressed(.Z) && is_grounded(game.level.player, game.level) {
 		player.vel.y = JUMP_FORCE
+	}
+
+	if rl.IsKeyPressed(.X) {
+		shoot_arrow(&game.level)
 	}
 
 	move_entity_y(player, game.level, player.vel.y * dt)
 
 	if check_hazard(player^, game.level) {
-		player_death(player)
+		player_death(player, game)
 	}
 
 	update_entity_state(player, game.level)
 
 	clamped_player_pos := rl.Vector2Clamp(
-		to_vec2(game.player.pos),
+		to_vec2(game.level.player.pos),
 		{0, 0},
-		{f32(game.level.width * TILE_SIZE), f32(game.level.height * TILE_SIZE)},
+		{
+			f32(game.level.width * TILE_SIZE - game.level.player.size.x),
+			f32(game.level.height * TILE_SIZE - game.level.player.size.y),
+		},
 	)
 	player.pos = to_vec2i(clamped_player_pos)
 
-	ent_collision := check_entity_collisions(player^, game^)
+	ent_collision := check_entity_collisions(player^, player.pos, game.level)
 
 	switch ent_collision {
 	case .None:
 	case .Player:
+	case .Arrow:
 	case .Goal:
-		fmt.println("Goal achieved")
 		player_win(game)
 	}
 }
@@ -77,13 +83,22 @@ draw_player :: proc(player: Entity) {
 	)
 }
 
-player_death :: proc(player: ^Entity) {
+shoot_arrow :: proc(level: ^Level) {
+	arrow := Entity {
+		type = .Arrow,
+		pos  = level.player.pos + {0, 8},
+		vel  = {400, 0},
+		size = {14, 1},
+	}
+
+	append(&level.entities, arrow)
+}
+
+player_death :: proc(player: ^Entity, game: ^Game) {
 	// player.state = .Dying
-	player.pos = {0, 0}
-	player.vel = {0, 0}
+	game.level = load_level("res/levels.ldtk", 0)
 }
 
 player_win :: proc(game: ^Game) {
-	// Level win
-	game.level = load_level("ldtk/levels.ldtk", 1)
+	game.level = load_level("res/levels.ldtk", 1)
 }

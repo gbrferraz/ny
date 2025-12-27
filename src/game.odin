@@ -13,43 +13,40 @@ CANVAS_HEIGHT :: 180
 
 CANVAS_RATIO: f32 : SCREEN_WIDTH / CANVAS_WIDTH
 
+TILE_SIZE :: 8
+
 Game :: struct {
-	level:    Level,
-	player:   Entity,
-	entities: [dynamic]Entity,
-	canvas:   rl.RenderTexture,
-	cam:      rl.Camera2D,
+	level:  Level,
+	canvas: rl.RenderTexture,
+	cam:    rl.Camera2D,
 }
 
 init_game :: proc() -> Game {
 	game := Game {
-		level = load_level("ldtk/levels.ldtk", 0),
-		player = {type = .Player, size = {16, 16}},
+		level = load_level("res/levels.ldtk", 0),
 		canvas = rl.LoadRenderTexture(CANVAS_WIDTH, CANVAS_HEIGHT),
 		cam = {zoom = 1, offset = {(CANVAS_WIDTH / 2) - 8, (CANVAS_HEIGHT / 2) - 8}},
 	}
-
-	goal := Entity {
-		type = .Goal,
-		pos  = {224, 96},
-		size = {32, 32},
-	}
-
-	append(&game.entities, goal)
 
 	return game
 }
 
 update_game :: proc(game: ^Game) {
 	dt := rl.GetFrameTime()
-	move_player(&game.player, game, dt)
+	move_player(&game.level.player, game, dt)
 	update_camera(game)
+
+
+	for &entity in game.level.entities {
+		move_entity_x(&entity, game.level, entity.vel.x * dt)
+		move_entity_y(&entity, game.level, entity.vel.y * dt)
+	}
 }
 
 draw_game :: proc(game: Game, canvas: Canvas) {
-	draw_player(game.player)
+	draw_player(game.level.player)
 
-	for entity in game.entities {
+	for entity in game.level.entities {
 		rl.DrawRectangleV(to_vec2(entity.pos), to_vec2(entity.size), rl.WHITE)
 	}
 }
