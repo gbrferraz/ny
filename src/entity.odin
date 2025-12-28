@@ -7,12 +7,12 @@ Entity :: struct {
 	type:        EntityType,
 	state:       EntityState,
 	pos:         Vec2i,
-	x_remainder: f32,
-	y_remainder: f32,
+	remainder:   Vec2,
 	size:        Vec2i,
 	vel:         Vec2,
 	speed:       f32,
-	is_grounded: bool,
+	last_input:  int,
+	use_gravity: bool,
 }
 
 EntityType :: enum {
@@ -30,17 +30,15 @@ EntityState :: enum {
 }
 
 CollisionType :: enum {
-	None   = 0,
-	Solid  = 1,
-	Hazard = 2,
+	None,
+	Solid,
+	Hazard,
 }
 
 update_entity_state :: proc(entity: ^Entity, level: Level) {
 	if entity.state == .Dying {return}
 
-	entity.is_grounded = is_grounded(entity^, level)
-
-	if !entity.is_grounded {
+	if !is_grounded(entity^, level) {
 		entity.state = .Jumping
 	} else if math.abs(entity.vel.x) > 10.0 {
 		entity.state = .Running
@@ -50,11 +48,11 @@ update_entity_state :: proc(entity: ^Entity, level: Level) {
 }
 
 move_entity_x :: proc(entity: ^Entity, level: Level, amount: f32) {
-	entity.x_remainder += amount
-	move := int(math.round(entity.x_remainder))
+	entity.remainder.x += amount
+	move := int(math.round(entity.remainder.x))
 
 	if move != 0 {
-		entity.x_remainder -= f32(move)
+		entity.remainder.x -= f32(move)
 		sign := int(math.sign(f32(move)))
 
 		for move != 0 {
@@ -71,11 +69,11 @@ move_entity_x :: proc(entity: ^Entity, level: Level, amount: f32) {
 }
 
 move_entity_y :: proc(entity: ^Entity, level: Level, amount: f32) {
-	entity.y_remainder += amount
-	move := int(math.round(entity.y_remainder))
+	entity.remainder.y += amount
+	move := int(math.round(entity.remainder.y))
 
 	if move != 0 {
-		entity.y_remainder -= f32(move)
+		entity.remainder.y -= f32(move)
 		sign := int(math.sign(f32(move)))
 
 		for move != 0 {
@@ -173,4 +171,33 @@ check_entity_collisions :: proc(entity: Entity, pos: Vec2i, level: Level) -> Ent
 	}
 
 	return .None
+}
+
+update_entities :: proc(game: ^Game, dt: f32) {
+	for &entity in game.level.entities {
+		if entity.use_gravity {entity.vel.y += GRAVITY * dt}
+
+		if entity.type == .Player {move_player(&entity, game)}
+
+		move_entity_x(&entity, game.level, entity.vel.x * dt)
+		move_entity_y(&entity, game.level, entity.vel.y * dt)
+
+		if entity.type == .Player {
+			update_camera(entity.pos, game)
+			clamp_entity_to_level(&entity, game.level)
+		}
+	}
+}
+
+clamp_entity_to_level :: proc(entity: ^Entity, level: Level) {
+	clamped_pos := rl.Vector2Clamp(
+		to_vec2(entity.pos),
+		{0, 0},
+		{
+			f32((level.width * TILE_SIZE) - entity.size.x),
+			f32((level.height * TILE_SIZE) - entity.size.y),
+		},
+	)
+
+	entity.pos = to_vec2i(clamped_pos)
 }

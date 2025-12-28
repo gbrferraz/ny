@@ -4,7 +4,6 @@ import "ldtk"
 import rl "vendor:raylib"
 
 Level :: struct {
-	player:    Entity,
 	entities:  [dynamic]Entity,
 	width:     int,
 	height:    int,
@@ -67,10 +66,13 @@ load_level :: proc(filename: string, index: int) -> Level {
 
 				switch entity.identifier {
 				case "Player":
-					level.player = {
-						pos  = pos,
-						size = {16, 16},
+					player := Entity {
+						type        = .Player,
+						pos         = pos,
+						size        = {16, 16},
+						use_gravity = true,
 					}
+					append(&level.entities, player)
 				case "Goal":
 					goal := Entity {
 						type = .Goal,

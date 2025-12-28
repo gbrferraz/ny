@@ -36,8 +36,8 @@ main :: proc() {
 	}
 }
 
-update_camera :: proc(game: ^Game) {
-	game.cam.target = to_vec2(game.level.player.pos)
+update_camera :: proc(target: Vec2i, game: ^Game) {
+	game.cam.target = to_vec2(target)
 
 	level_w_px := f32(game.level.width * TILE_SIZE)
 	level_h_px := f32(game.level.height * TILE_SIZE)

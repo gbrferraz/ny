@@ -28,25 +28,22 @@ init_game :: proc() -> Game {
 		cam = {zoom = 1, offset = {(CANVAS_WIDTH / 2) - 8, (CANVAS_HEIGHT / 2) - 8}},
 	}
 
+	init_player()
+
 	return game
 }
 
 update_game :: proc(game: ^Game) {
 	dt := rl.GetFrameTime()
-	move_player(&game.level.player, game, dt)
-	update_camera(game)
-
-
-	for &entity in game.level.entities {
-		move_entity_x(&entity, game.level, entity.vel.x * dt)
-		move_entity_y(&entity, game.level, entity.vel.y * dt)
-	}
+	update_entities(game, dt)
 }
 
 draw_game :: proc(game: Game, canvas: Canvas) {
-	draw_player(game.level.player)
-
 	for entity in game.level.entities {
-		rl.DrawRectangleV(to_vec2(entity.pos), to_vec2(entity.size), rl.WHITE)
+		if entity.type == .Player {
+			draw_player(entity)
+		} else {
+			rl.DrawRectangleV(to_vec2(entity.pos), to_vec2(entity.size), rl.WHITE)
+		}
 	}
 }

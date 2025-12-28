@@ -3,35 +3,52 @@ package ny
 import rl "vendor:raylib"
 
 GRAVITY :: 1500.0
-MOVE_SPEED :: 200.0
-JUMP_FORCE :: -350.0
+MOVE_SPEED :: 120.0
+ARROW_SPEED :: 500.0
+JUMP_FORCE :: -300.0
 
-move_player :: proc(player: ^Entity, game: ^Game, dt: f32) {
-	if player.state == .Dying {
-		player.vel.y += GRAVITY * dt
-		move_entity_y(player, game.level, player.vel.y * dt)
-		return
+current_anim: Animation
+player_run: Animation
+player_idle: Animation
+
+init_player :: proc() {
+	player_idle = {
+		texture      = rl.LoadTexture("res/player/idle.png"),
+		num_frames   = 2,
+		frame_length = 0.5,
+		type         = .Idle,
 	}
+	player_run = {
+		texture      = rl.LoadTexture("res/player/run.png"),
+		num_frames   = 4,
+		frame_length = 0.1,
+		type         = .Run,
+	}
+	current_anim = player_idle
+}
+
+move_player :: proc(player: ^Entity, game: ^Game) {
+	if player.state == .Dying {return}
 
 	input_x: f32 = 0
-	if rl.IsKeyDown(.LEFT) do input_x -= 1
-	if rl.IsKeyDown(.RIGHT) do input_x += 1
+	if rl.IsKeyDown(.LEFT) {
+		input_x -= 1
+		player.last_input = -1
+	}
+	if rl.IsKeyDown(.RIGHT) {
+		input_x += 1
+		player.last_input = 1
+	}
 
 	player.vel.x = input_x * MOVE_SPEED
 
-	move_entity_x(player, game.level, player.vel.x * dt)
-
-	player.vel.y += GRAVITY * dt
-
-	if rl.IsKeyPressed(.Z) && is_grounded(game.level.player, game.level) {
+	if rl.IsKeyPressed(.Z) && is_grounded(player^, game.level) {
 		player.vel.y = JUMP_FORCE
 	}
 
 	if rl.IsKeyPressed(.X) {
-		shoot_arrow(&game.level)
+		shoot_arrow(player^, &game.level)
 	}
-
-	move_entity_y(player, game.level, player.vel.y * dt)
 
 	if check_hazard(player^, game.level) {
 		player_death(player, game)
@@ -39,55 +56,40 @@ move_player :: proc(player: ^Entity, game: ^Game, dt: f32) {
 
 	update_entity_state(player, game.level)
 
-	clamped_player_pos := rl.Vector2Clamp(
-		to_vec2(game.level.player.pos),
-		{0, 0},
-		{
-			f32(game.level.width * TILE_SIZE - game.level.player.size.x),
-			f32(game.level.height * TILE_SIZE - game.level.player.size.y),
-		},
-	)
-	player.pos = to_vec2i(clamped_player_pos)
+	#partial switch player.state {
+	case .Idle:
+		if current_anim.type != .Idle {
+			current_anim = player_idle
+		}
+	case .Running:
+		if current_anim.type != .Run {
+			current_anim = player_run
+		}
+	}
+
+	update_animation(&current_anim)
 
 	ent_collision := check_entity_collisions(player^, player.pos, game.level)
 
-	switch ent_collision {
-	case .None:
-	case .Player:
-	case .Arrow:
+	#partial switch ent_collision {
 	case .Goal:
 		player_win(game)
 	}
 }
 
 draw_player :: proc(player: Entity) {
-	color: rl.Color
-
-	switch player.state {
-	case .Idle:
-		color = rl.GREEN
-	case .Running:
-		color = rl.BLUE
-	case .Jumping:
-		color = rl.YELLOW
-	case .Dying:
-		color = rl.RED
-	}
-
-	rl.DrawRectangle(
-		i32(player.pos.x),
-		i32(player.pos.y),
-		i32(player.size.x),
-		i32(player.size.y),
-		color,
-	)
+	flipped := player.last_input < 0 ? true : false
+	draw_animation(current_anim, player.pos, flipped)
 }
 
-shoot_arrow :: proc(level: ^Level) {
+shoot_arrow :: proc(entity: Entity, level: ^Level) {
+	arrow_pos: Vec2i
+	arrow_pos = entity.pos + {0, 6}
+
 	arrow := Entity {
 		type = .Arrow,
-		pos  = level.player.pos + {0, 8},
-		vel  = {400, 0},
+		pos  = arrow_pos,
+		vel  = {ARROW_SPEED * f32(entity.last_input), 0},
 		size = {14, 1},
 	}
 
