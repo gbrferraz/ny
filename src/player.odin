@@ -1,5 +1,6 @@
 package ny
 
+import "core:fmt"
 import rl "vendor:raylib"
 
 GRAVITY :: 1500.0
@@ -10,6 +11,12 @@ JUMP_FORCE :: -300.0
 current_anim: Animation
 player_run: Animation
 player_idle: Animation
+
+jump_sound: rl.Sound
+lose_sound: rl.Sound
+win_sound: rl.Sound
+
+shoot_sound: rl.Sound
 
 init_player :: proc() {
 	player_idle = {
@@ -25,38 +32,41 @@ init_player :: proc() {
 		type         = .Run,
 	}
 	current_anim = player_idle
+
+	jump_sound = rl.LoadSound("res/player/jump.wav")
+	lose_sound = rl.LoadSound("res/sfx/lose_1.wav")
+	shoot_sound = rl.LoadSound("res/arrow/shoot.wav")
 }
 
-move_player :: proc(player: ^Entity, game: ^Game) {
-	if player.state == .Dying {return}
+move_player :: proc(using player: ^Entity, dt: f32, game: ^Game) {
+	if state == .Dying {return}
+
+	if use_gravity {vel.y += GRAVITY * dt}
 
 	input_x: f32 = 0
 	if rl.IsKeyDown(.LEFT) {
 		input_x -= 1
-		player.last_input = -1
+		last_input = -1
 	}
 	if rl.IsKeyDown(.RIGHT) {
 		input_x += 1
-		player.last_input = 1
+		last_input = 1
 	}
 
-	player.vel.x = input_x * MOVE_SPEED
+	vel.x = input_x * MOVE_SPEED
 
 	if rl.IsKeyPressed(.Z) && is_grounded(player^, game.level) {
-		player.vel.y = JUMP_FORCE
+		vel.y = JUMP_FORCE
+		rl.PlaySound(jump_sound)
 	}
 
-	if rl.IsKeyPressed(.X) {
-		shoot_arrow(player^, &game.level)
-	}
+	if rl.IsKeyPressed(.X) {shoot_arrow(player^, &game.level)}
 
-	if check_hazard(player^, game.level) {
-		player_death(player, game)
-	}
+	if check_hazard(player^, game.level) {player_death(game)}
 
 	update_entity_state(player, game.level)
 
-	#partial switch player.state {
+	#partial switch state {
 	case .Idle:
 		if current_anim.type != .Idle {
 			current_anim = player_idle
@@ -69,12 +79,15 @@ move_player :: proc(player: ^Entity, game: ^Game) {
 
 	update_animation(&current_anim)
 
-	ent_collision := check_entity_collisions(player^, player.pos, game.level)
+	move_entity_x(player, game.level, vel.x * dt)
+	move_entity_y(player, game.level, vel.y * dt)
 
-	#partial switch ent_collision {
-	case .Goal:
-		player_win(game)
-	}
+	other_collision, index := check_entity_collisions(player^, player.pos, game.level)
+
+	if other_collision == .Goal {level_win(game)}
+	if other_collision == .Enemy {player_death(game)}
+
+	clamp_entity_to_level(player, game.level)
 }
 
 draw_player :: proc(player: Entity) {
@@ -93,14 +106,20 @@ shoot_arrow :: proc(entity: Entity, level: ^Level) {
 		size = {14, 1},
 	}
 
+	rl.PlaySound(shoot_sound)
 	append(&level.entities, arrow)
 }
 
-player_death :: proc(player: ^Entity, game: ^Game) {
-	// player.state = .Dying
-	game.level = load_level("res/levels.ldtk", 0)
+player_death :: proc(game: ^Game) {
+	game.level = load_level("res/levels.ldtk", game.level_index)
+	rl.PlaySound(lose_sound)
 }
 
-player_win :: proc(game: ^Game) {
-	game.level = load_level("res/levels.ldtk", 1)
+level_win :: proc(game: ^Game) {
+	game.level_index += 1
+	game.level = load_level("res/levels.ldtk", game.level_index)
+
+	fmt.printfln("Level Win")
+
+	rl.PlaySound(win_sound)
 }

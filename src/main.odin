@@ -2,11 +2,14 @@ package ny
 
 import rl "vendor:raylib"
 
-
 main :: proc() {
 	rl.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Game")
 	defer rl.CloseWindow()
 	rl.SetTargetFPS(60)
+
+	rl.InitAudioDevice()
+	defer rl.CloseAudioDevice()
+	rl.SetMasterVolume(0.1)
 
 	canvas := init_canvas(CANVAS_WIDTH, CANVAS_HEIGHT)
 	game := init_game()

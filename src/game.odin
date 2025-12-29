@@ -16,9 +16,10 @@ CANVAS_RATIO: f32 : SCREEN_WIDTH / CANVAS_WIDTH
 TILE_SIZE :: 8
 
 Game :: struct {
-	level:  Level,
-	canvas: rl.RenderTexture,
-	cam:    rl.Camera2D,
+	level:       Level,
+	level_index: int,
+	canvas:      rl.RenderTexture,
+	cam:         rl.Camera2D,
 }
 
 init_game :: proc() -> Game {
@@ -36,14 +37,14 @@ init_game :: proc() -> Game {
 update_game :: proc(game: ^Game) {
 	dt := rl.GetFrameTime()
 	update_entities(game, dt)
+	move_player(&game.level.player, dt, game)
+	update_camera(game.level.player.pos, game)
 }
 
 draw_game :: proc(game: Game, canvas: Canvas) {
 	for entity in game.level.entities {
-		if entity.type == .Player {
-			draw_player(entity)
-		} else {
-			rl.DrawRectangleV(to_vec2(entity.pos), to_vec2(entity.size), rl.WHITE)
-		}
+		rl.DrawRectangleV(to_vec2(entity.pos), to_vec2(entity.size), rl.WHITE)
 	}
+
+	draw_player(game.level.player)
 }

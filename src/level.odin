@@ -4,6 +4,7 @@ import "ldtk"
 import rl "vendor:raylib"
 
 Level :: struct {
+	player:    Entity,
 	entities:  [dynamic]Entity,
 	width:     int,
 	height:    int,
@@ -63,24 +64,36 @@ load_level :: proc(filename: string, index: int) -> Level {
 		case .Entities:
 			for entity in layer.entity_instances {
 				pos := Vec2i{entity.px[0], entity.px[1]}
+				new_entity: Entity
 
 				switch entity.identifier {
 				case "Player":
-					player := Entity {
+					new_entity = {
 						type        = .Player,
 						pos         = pos,
 						size        = {16, 16},
+						last_input  = 1,
 						use_gravity = true,
 					}
-					append(&level.entities, player)
+					level.player = new_entity
+					continue
 				case "Goal":
-					goal := Entity {
+					new_entity = Entity {
 						type = .Goal,
 						pos  = pos,
 						size = {entity.width, entity.height},
 					}
-					append(&level.entities, goal)
+				case "Enemy":
+					new_entity = Entity {
+						type        = .Enemy,
+						pos         = pos,
+						size        = {16, 16},
+						vel         = {-ENEMY_SPEED, 0},
+						last_input  = -1,
+						use_gravity = true,
+					}
 				}
+				append(&level.entities, new_entity)
 			}
 		case .Tiles:
 		case .AutoLayer:

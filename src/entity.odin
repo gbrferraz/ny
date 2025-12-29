@@ -18,6 +18,7 @@ Entity :: struct {
 EntityType :: enum {
 	None,
 	Player,
+	Enemy,
 	Arrow,
 	Goal,
 }
@@ -33,6 +34,36 @@ CollisionType :: enum {
 	None,
 	Solid,
 	Hazard,
+}
+
+update_entities :: proc(game: ^Game, dt: f32) {
+	for &entity, i in game.level.entities {
+		if entity.use_gravity {entity.vel.y += GRAVITY * dt}
+
+		switch entity.type {
+		case .None:
+		case .Player:
+		case .Arrow:
+			arrow_collision, col_i := check_entity_collisions(entity, entity.pos, game.level)
+
+			if arrow_collision == .Enemy && abs(entity.vel.x) > 0 {
+				entity.vel = {0, 0}
+				entity.use_gravity = true
+
+				ordered_remove(&game.level.entities, col_i)
+			}
+		case .Goal:
+			goal_collision, _ := check_entity_collisions(entity, entity.pos, game.level)
+			if goal_collision == .Player {
+				level_win(game)
+			}
+		case .Enemy:
+			move_enemy(&entity, game.level)
+		}
+
+		move_entity_x(&entity, game.level, entity.vel.x * dt)
+		move_entity_y(&entity, game.level, entity.vel.y * dt)
+	}
 }
 
 update_entity_state :: proc(entity: ^Entity, level: Level) {
@@ -110,7 +141,7 @@ collide_at :: proc(entity: Entity, pos: Vec2i, level: Level) -> bool {
 		}
 	}
 
-	ent_collision := check_entity_collisions(entity, pos, level)
+	ent_collision, _ := check_entity_collisions(entity, pos, level)
 	if ent_collision == .Arrow {return true}
 
 	return false
@@ -118,6 +149,10 @@ collide_at :: proc(entity: Entity, pos: Vec2i, level: Level) -> bool {
 
 is_grounded :: proc(entity: Entity, level: Level) -> bool {
 	return collide_at(entity, entity.pos + {0, 1}, level)
+}
+
+is_on_wall :: proc(entity: Entity, dir: int, level: Level) -> bool {
+	return collide_at(entity, entity.pos + {dir, 0}, level)
 }
 
 check_hazard :: proc(entity: Entity, level: Level) -> bool {
@@ -144,10 +179,10 @@ check_hazard :: proc(entity: Entity, level: Level) -> bool {
 	return false
 }
 
-check_entity_collisions :: proc(entity: Entity, pos: Vec2i, level: Level) -> EntityType {
+check_entity_collisions :: proc(entity: Entity, pos: Vec2i, level: Level) -> (EntityType, int) {
 	entity_rec := rl.Rectangle{f32(pos.x), f32(pos.y), f32(entity.size.x), f32(entity.size.y)}
 
-	for &other in level.entities {
+	for &other, index in level.entities {
 		if entity == other {continue}
 
 		collision_rec := rl.Rectangle {
@@ -166,27 +201,11 @@ check_entity_collisions :: proc(entity: Entity, pos: Vec2i, level: Level) -> Ent
 				if entity_bottom > arrow_top {continue}
 			}
 
-			return other.type
+			return other.type, index
 		}
 	}
 
-	return .None
-}
-
-update_entities :: proc(game: ^Game, dt: f32) {
-	for &entity in game.level.entities {
-		if entity.use_gravity {entity.vel.y += GRAVITY * dt}
-
-		if entity.type == .Player {move_player(&entity, game)}
-
-		move_entity_x(&entity, game.level, entity.vel.x * dt)
-		move_entity_y(&entity, game.level, entity.vel.y * dt)
-
-		if entity.type == .Player {
-			update_camera(entity.pos, game)
-			clamp_entity_to_level(&entity, game.level)
-		}
-	}
+	return .None, -1
 }
 
 clamp_entity_to_level :: proc(entity: ^Entity, level: Level) {
