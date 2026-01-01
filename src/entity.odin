@@ -37,7 +37,7 @@ CollisionType :: enum {
 }
 
 update_entities :: proc(game: ^Game, dt: f32) {
-	for &entity, i in game.level.entities {
+	for &entity in game.level.entities {
 		if entity.use_gravity {entity.vel.y += GRAVITY * dt}
 
 		switch entity.type {

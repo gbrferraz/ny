@@ -3,6 +3,8 @@ package ny
 import "ldtk"
 import rl "vendor:raylib"
 
+LEVEL_DATA :: #load("../res/levels.ldtk")
+
 Level :: struct {
 	player:    Entity,
 	entities:  [dynamic]Entity,
@@ -19,8 +21,8 @@ Tile :: struct {
 	flip_y: bool,
 }
 
-load_level :: proc(filename: string, index: int) -> Level {
-	project, ok := ldtk.load_from_file(filename).?
+load_level :: proc(index: int) -> Level {
+	project, ok := ldtk.load_from_memory(LEVEL_DATA).?
 	if !ok {return {}}
 
 	if index < 0 || index >= len(project.levels) {return {}}

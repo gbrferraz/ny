@@ -3,6 +3,7 @@ package ny
 import "core:fmt"
 import rl "vendor:raylib"
 
+
 GRAVITY :: 1500.0
 MOVE_SPEED :: 120.0
 ARROW_SPEED :: 500.0
@@ -20,22 +21,22 @@ shoot_sound: rl.Sound
 
 init_player :: proc() {
 	player_idle = {
-		texture      = rl.LoadTexture("res/player/idle.png"),
+		texture      = load_texture_embedded(IDLE_PNG),
 		num_frames   = 2,
 		frame_length = 0.5,
 		type         = .Idle,
 	}
 	player_run = {
-		texture      = rl.LoadTexture("res/player/run.png"),
+		texture      = load_texture_embedded(RUN_PNG),
 		num_frames   = 4,
 		frame_length = 0.1,
 		type         = .Run,
 	}
 	current_anim = player_idle
 
-	jump_sound = rl.LoadSound("res/player/jump.wav")
-	lose_sound = rl.LoadSound("res/sfx/lose_1.wav")
-	shoot_sound = rl.LoadSound("res/arrow/shoot.wav")
+	jump_sound = load_sound_embedded(JUMP_WAV)
+	lose_sound = load_sound_embedded(LOSE_WAV)
+	shoot_sound = load_sound_embedded(SHOOT_WAV)
 }
 
 move_player :: proc(using player: ^Entity, dt: f32, game: ^Game) {
@@ -82,7 +83,7 @@ move_player :: proc(using player: ^Entity, dt: f32, game: ^Game) {
 	move_entity_x(player, game.level, vel.x * dt)
 	move_entity_y(player, game.level, vel.y * dt)
 
-	other_collision, index := check_entity_collisions(player^, player.pos, game.level)
+	other_collision, _ := check_entity_collisions(player^, player.pos, game.level)
 
 	if other_collision == .Goal {level_win(game)}
 	if other_collision == .Enemy {player_death(game)}
@@ -111,13 +112,13 @@ shoot_arrow :: proc(entity: Entity, level: ^Level) {
 }
 
 player_death :: proc(game: ^Game) {
-	game.level = load_level("res/levels.ldtk", game.level_index)
+	game.level = load_level(game.level_index)
 	rl.PlaySound(lose_sound)
 }
 
 level_win :: proc(game: ^Game) {
 	game.level_index += 1
-	game.level = load_level("res/levels.ldtk", game.level_index)
+	game.level = load_level(game.level_index)
 
 	fmt.printfln("Level Win")
 

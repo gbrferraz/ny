@@ -24,7 +24,7 @@ Game :: struct {
 
 init_game :: proc() -> Game {
 	game := Game {
-		level = load_level("res/levels.ldtk", 0),
+		level = load_level(0),
 		canvas = rl.LoadRenderTexture(CANVAS_WIDTH, CANVAS_HEIGHT),
 		cam = {zoom = 1, offset = {(CANVAS_WIDTH / 2) - 8, (CANVAS_HEIGHT / 2) - 8}},
 	}
