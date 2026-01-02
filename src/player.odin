@@ -45,23 +45,26 @@ move_player :: proc(using player: ^Entity, dt: f32, game: ^Game) {
 	if use_gravity {vel.y += GRAVITY * dt}
 
 	input_x: f32 = 0
-	if rl.IsKeyDown(.LEFT) {
+	if rl.IsKeyDown(.LEFT) || rl.IsGamepadButtonDown(0, .LEFT_FACE_LEFT) {
 		input_x -= 1
 		last_input = -1
 	}
-	if rl.IsKeyDown(.RIGHT) {
+	if rl.IsKeyDown(.RIGHT) || rl.IsGamepadButtonDown(0, .LEFT_FACE_RIGHT) {
 		input_x += 1
 		last_input = 1
 	}
 
 	vel.x = input_x * MOVE_SPEED
 
-	if rl.IsKeyPressed(.Z) && is_grounded(player^, game.level) {
+	jump_input := rl.IsKeyPressed(.Z) || rl.IsGamepadButtonPressed(0, .RIGHT_FACE_DOWN)
+	if jump_input && is_grounded(player^, game.level) {
 		vel.y = JUMP_FORCE
 		rl.PlaySound(jump_sound)
 	}
 
-	if rl.IsKeyPressed(.X) {shoot_arrow(player^, &game.level)}
+	if rl.IsKeyPressed(.X) || rl.IsGamepadButtonPressed(0, .RIGHT_FACE_LEFT) {
+		shoot_arrow(player^, &game.level)
+	}
 
 	if check_hazard(player^, game.level) {player_death(game)}
 
